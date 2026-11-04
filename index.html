@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>김성연의 미니게임</title>
+<meta name="description" content="직접 기획하고 만든 3D 캐주얼 웹게임 모음">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#2e2218; --sub:#7a6450; --paper:#fffaf2; --line:#eedfc8; --accent:#e8692c; --deep:#b84c18; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Noto Sans KR',sans-serif; color:var(--ink); word-break:keep-all;
+    background:radial-gradient(ellipse at 50% 0%, #fff4e2 0%, #f6e6cf 55%, #efd9bb 100%) fixed; min-height:100vh; }
+  a { color:inherit; }
+  .wrap { max-width:1080px; margin:0 auto; padding:56px 20px 40px; }
+  header { text-align:center; margin-bottom:44px; }
+  header p.eyebrow { margin:0 0 8px; font-size:13px; letter-spacing:.2em; color:var(--accent); font-weight:700; }
+  header h1 { margin:0; font-family:'Jua'; font-weight:400; font-size:clamp(36px, 6vw, 56px); line-height:1.1; }
+  header p.lead { margin:12px auto 0; max-width:520px; font-size:16px; line-height:1.7; color:var(--sub); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:22px; }
+  .card { background:var(--paper); border-radius:22px; overflow:hidden; box-shadow:0 6px 0 rgba(120,80,40,.14), 0 14px 30px rgba(120,80,40,.10); display:flex; flex-direction:column; transition:transform .2s ease; }
+  .card:hover { transform:translateY(-4px); }
+  .thumb { display:block; aspect-ratio:16/10; background:#f1e2cb; overflow:hidden; }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .4s ease; }
+  .card:hover .thumb img { transform:scale(1.04); }
+  .body { padding:18px 20px 20px; display:flex; flex-direction:column; gap:8px; flex:1; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .tag { font-size:12px; padding:3px 9px; border-radius:99px; background:#f6e8d3; color:var(--sub); }
+  .card h2 { margin:4px 0 0; font-family:'Jua'; font-weight:400; font-size:28px; }
+  .pitch { margin:0; font-size:15px; line-height:1.65; color:#5a4636; }
+  .meta { margin:2px 0 6px; font-size:13px; color:var(--sub); line-height:1.6; }
+  .actions { display:flex; gap:8px; margin-top:auto; padding-top:6px; }
+  .play { flex:1; text-align:center; text-decoration:none; font-family:'Jua'; font-size:19px; color:#fff; background:var(--accent); border-radius:14px; padding:12px 0; box-shadow:0 4px 0 var(--deep); }
+  .play:active { transform:translateY(2px); box-shadow:0 2px 0 var(--deep); }
+  .story { text-decoration:none; font-size:14px; color:var(--ink); border:1px solid var(--line); border-radius:14px; padding:12px 14px; background:#fff; white-space:nowrap; }
+  .story:hover { border-color:var(--accent); }
+  footer { text-align:center; margin-top:48px; font-size:14px; color:var(--sub); line-height:1.9; }
+  footer a { font-weight:700; text-decoration:none; border-bottom:1px solid currentColor; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">MINI GAMES</p>
+    <h1>김성연의 미니게임</h1>
+    <p class="lead">일상의 행동 하나를 손맛으로 옮긴 3D 캐주얼 웹게임이에요. 설치 없이 휴대폰과 PC에서 바로 할 수 있어요.</p>
+  </header>
+
+  <main class="grid">
+    <article class="card">
+      <a class="thumb" href="./hoesik/"><img src="./assets/hoesik.jpg" alt="불판 위 삼겹살과 부장님 앞접시가 보이는 게임 화면"></a>
+      <div class="body">
+        <div class="tags"><span class="tag">3D 캐주얼</span><span class="tag">타이밍</span></div>
+        <h2>막내의 회식</h2>
+        <p class="pitch">부장님 앞접시를 비우지 마라. 삼겹살을 굽고, 뒤집고, 한입 크기로 잘라 대접해요.</p>
+        <p class="meta">한 판 2분, 탭과 드래그와 긋기</p>
+        <div class="actions">
+          <a class="play" href="./hoesik/">플레이</a>
+          <a class="story" href="https://github.com/lalunru/mini-games/tree/main/hoesik" target="_blank" rel="noopener">만든 이야기</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <a class="thumb" href="./gyul/"><img src="./assets/gyul.jpg" alt="모양 틀 점선이 그려진 귤에 칼집이 난 게임 화면"></a>
+      <div class="body">
+        <div class="tags"><span class="tag">3D 캐주얼</span><span class="tag">인터랙션</span></div>
+        <h2>귤 까기 장인</h2>
+        <p class="pitch">모양 틀대로 귤을 까고, 펼쳐서 확인해요. 꽃부터 사람 모양까지 6가지.</p>
+        <p class="meta">한 판 25초에서 45초, 누르고 긋기와 굴리기</p>
+        <div class="actions">
+          <a class="play" href="./gyul/">플레이</a>
+          <a class="story" href="https://github.com/lalunru/mini-games/tree/main/gyul" target="_blank" rel="noopener">만든 이야기</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <a class="thumb" href="./bungeo/"><img src="./assets/bungeo.jpg" alt="붕어빵 틀 위에서 노릇하게 구워지는 붕어빵 게임 화면"></a>
+      <div class="body">
+        <div class="tags"><span class="tag">3D 요리 경영</span><span class="tag">멀티태스킹</span></div>
+        <h2>붕어빵 노점</h2>
+        <p class="pitch">밀가루부터 반죽해서, 팥과 슈크림과 고구마와 피자 붕어빵을 손님 주문대로 구워 팔아요.</p>
+        <p class="meta">한 판 90초, 틀 6개 동시에 굽기</p>
+        <div class="actions">
+          <a class="play" href="./bungeo/">플레이</a>
+          <a class="story" href="https://github.com/lalunru/mini-games/tree/main/bungeo" target="_blank" rel="noopener">만든 이야기</a>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>기획과 개발 김성연<br>
+      <a href="https://portfolio-lalunrus-projects.vercel.app/" target="_blank" rel="noopener">포트폴리오</a>
+      &nbsp;&nbsp;
+      <a href="https://github.com/lalunru" target="_blank" rel="noopener">GitHub</a>
+    </p>
+  </footer>
+</div>
+</body>
+</html>
