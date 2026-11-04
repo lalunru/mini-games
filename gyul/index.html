@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>귤 까기 장인</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#3b2412; --paper:#fffaf1; --orange:#f07a12; --deep:#c85a06; --mute:#8a6a4f; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; overflow:hidden; font-family:'Noto Sans KR',sans-serif; color:var(--ink); user-select:none; -webkit-user-select:none; word-break:keep-all;
+    background: radial-gradient(ellipse at 50% 45%, #fff6e6 0%, #f6e3c4 60%, #e9cfa6 100%); }
+  canvas#scene { position:fixed; inset:0; width:100%; height:100%; touch-action:none; display:block; }
+  .hud { position:fixed; pointer-events:none; }
+  #top { top:12px; left:12px; right:12px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .chip { background:var(--paper); border-radius:16px; padding:10px 14px; box-shadow:0 4px 0 rgba(120,70,20,.18); }
+  #pattern { display:flex; align-items:center; gap:10px; }
+  #patternName { font-family:'Jua'; font-size:20px; }
+  #stars { color:var(--orange); font-size:14px; letter-spacing:1px; }
+  #meters { margin-top:6px; width:170px; }
+  .meter { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--mute); margin-top:4px; }
+  .meter .bar { flex:1; height:8px; background:#f1e3cc; border-radius:5px; overflow:hidden; }
+  .meter .bar i { display:block; height:100%; width:0; background:var(--orange); border-radius:5px; transition:width .15s; }
+  .meter b { min-width:34px; text-align:right; color:var(--ink); font-weight:700; }
+  #timer { font-family:'Jua'; font-size:28px; min-width:86px; text-align:center; }
+  #timer.hurry { color:#d23c1c; animation:pulse .5s infinite alternate; }
+  @keyframes pulse { to { transform:scale(1.08); } }
+  #hint { bottom:80px; left:50%; transform:translateX(-50%); background:rgba(59,36,18,.78); color:#fff; padding:9px 16px; border-radius:20px; font-size:14px; white-space:nowrap; transition:opacity .4s; }
+  #modes { bottom:16px; left:50%; transform:translateX(-50%); display:flex; gap:8px; pointer-events:auto; }
+  .mode { border:0; cursor:pointer; font-family:'Jua'; font-size:18px; min-height:48px; padding:0 18px; border-radius:16px; background:var(--paper); color:var(--ink); box-shadow:0 4px 0 rgba(120,70,20,.2); white-space:nowrap; }
+  .mode.on { background:var(--orange); color:#fff; box-shadow:0 4px 0 var(--deep); }
+  #flash { position:fixed; left:50%; top:20%; transform:translateX(-50%); font-family:'Jua'; font-size:34px; color:var(--deep); text-shadow:0 3px 0 #fff; pointer-events:none; opacity:0; transition:opacity .3s; }
+  .overlay { position:fixed; inset:0; display:grid; place-items:center; padding:16px; background:rgba(80,45,15,.35); overflow:auto; }
+  .overlay.hidden { display:none; }
+  .card { background:var(--paper); border-radius:24px; padding:24px 20px; width:100%; max-width:560px; text-align:center; box-shadow:0 8px 0 rgba(120,70,20,.25); }
+  .card h1 { font-family:'Jua'; font-weight:400; font-size:40px; margin:0; color:var(--deep); }
+  .card .sub { color:var(--mute); margin:4px 0 18px; font-size:15px; }
+  .levels { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+  .lv { border:0; cursor:pointer; background:#fff; border-radius:16px; padding:10px 6px 12px; box-shadow:0 4px 0 rgba(120,70,20,.18); font-family:inherit; color:var(--ink); display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .lv:active { transform:translateY(3px); box-shadow:0 1px 0 rgba(120,70,20,.18); }
+  .lv canvas { width:100%; max-width:110px; aspect-ratio:1; }
+  .lv b { font-family:'Jua'; font-weight:400; font-size:19px; }
+  .lv small { color:var(--orange); }
+  .lv span { font-size:12px; color:var(--mute); }
+  .howto { text-align:left; font-size:14px; line-height:1.6; background:#fbefdc; border-radius:14px; padding:12px 14px; margin:0; list-style:none; }
+  .howto li { padding:2px 0; }
+  .btn { border:0; cursor:pointer; font-family:'Jua'; font-size:19px; padding:13px 22px; border-radius:16px; background:var(--orange); color:#fff; box-shadow:0 5px 0 var(--deep); }
+  .btn:active { transform:translateY(3px); box-shadow:0 2px 0 var(--deep); }
+  .btn.ghost { background:#f6e7d0; color:var(--ink); box-shadow:0 5px 0 #dcc2a0; }
+  .row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  #unfoldWrap { position:relative; width:min(78vw,360px); margin:6px auto 0; }
+  #unfold { width:100%; aspect-ratio:1; display:block; }
+  #targetMini { position:absolute; right:-6px; top:-6px; width:31%; background:#fff; border-radius:14px; padding:6px; box-shadow:0 3px 0 rgba(120,70,20,.2); }
+  #targetMini canvas { width:100%; aspect-ratio:1; display:block; }
+  #targetMini span { font-size:11px; color:var(--mute); }
+  #resultBody { transition:opacity .4s, transform .4s; }
+  #resultBody.hide { opacity:0; transform:translateY(10px); }
+  .rank { font-family:'Jua'; font-size:32px; color:var(--deep); margin:6px 0 2px; }
+  .score { font-family:'Jua'; font-size:20px; margin-bottom:10px; }
+  .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0 0 16px; font-size:13px; color:var(--mute); }
+  .stats div { background:#fbefdc; border-radius:12px; padding:8px 4px; }
+  .stats b { display:block; font-family:'Jua'; font-weight:400; font-size:21px; color:var(--ink); }
+  #msg { font-size:13px; color:var(--mute); height:18px; margin-top:10px; }
+  @media (max-width:420px) { .card h1 { font-size:34px; } #meters { width:130px; } #timer { font-size:24px; min-width:70px; } .lv b { font-size:17px; } }
+  .backlink { display:inline-block; margin-top:14px; font-size:14px; color:inherit; opacity:.65; text-decoration:none; font-family:'Noto Sans KR',sans-serif; }
+  .backlink:hover { opacity:1; text-decoration:underline; }
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="top" class="hud">
+  <div class="chip">
+    <div id="pattern"><span id="patternName">꽃</span><span id="stars">★</span></div>
+    <div id="meters">
+      <div class="meter">진행 <span class="bar"><i id="covBar"></i></span><b id="covTxt">0%</b></div>
+      <div class="meter">정확 <span class="bar"><i id="accBar" style="background:#7aa63c"></i></span><b id="accTxt">-</b></div>
+    </div>
+  </div>
+  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px">
+    <div class="chip" id="timer">0:25</div>
+    <button class="mode" id="doneBtn" type="button" style="pointer-events:auto; font-size:16px; min-height:44px">다 깠어요</button>
+  </div>
+</div>
+<div id="hint" class="hud">귤을 꾹 누른 채 까만 선을 따라 그어요</div>
+<div id="modes" class="hud"><button class="mode on" id="mCut" type="button">🔪 까기</button><button class="mode" id="mRoll" type="button">🖐 굴리기</button></div>
+<div id="flash">다 깠다!</div>
+
+<div class="overlay" id="startScreen">
+  <div class="card">
+    <h1>귤 까기 장인</h1>
+    <p class="sub">모양 틀대로 귤을 까고, 펼쳐서 확인해요</p>
+    <div class="levels" id="levels"></div>
+    <ul class="howto">
+      <li>🍊 <b>귤을 꾹 누른 채</b> 까만 선을 따라 그으면 껍질에 칼집이 나요</li>
+      <li>🖐 <b>굴리기</b> 모드, 귤 바깥 드래그, 두 손가락, 방향키로 귤을 굴려요</li>
+      <li>✋ 긋다가 <b>귤 밖으로 끌고 나가면</b> 그쪽으로 굴러가며 계속 까져요</li>
+      <li>⏱️ 빨리 끝낼수록 보너스! 다 깠으면 <b>다 깠어요</b>를 눌러요</li>
+      <li>✂️ 테두리를 한 바퀴 다 까면 바깥 껍질이 떨어져 나가요</li>
+    </ul>
+    <div><a class="backlink" href="../">← 게임 목록</a></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="resultScreen">
+  <div class="card">
+    <div class="sub" style="margin:0">펼쳐 보니...</div>
+    <div id="unfoldWrap">
+      <canvas id="unfold" width="720" height="720"></canvas>
+      <div id="targetMini"><canvas id="targetCv" width="240" height="240"></canvas><span>목표</span></div>
+    </div>
+    <div id="resultBody" class="hide">
+      <div class="rank" id="rRank">귤 까기 장인</div>
+      <div class="score" id="rScore">0점</div>
+      <div class="stats">
+        <div>진행도<b id="rCov">0%</b></div>
+        <div>정확도<b id="rAcc">0%</b></div>
+        <div>남은 시간<b id="rTime">0초</b></div>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="saveBtn">이미지 저장</button>
+        <button class="btn ghost" id="otherBtn">다른 모양</button>
+        <button class="btn" id="againBtn">한 번 더</button>
+      </div>
+      <div><a class="backlink" href="../">← 게임 목록</a></div>
+      <div id="msg"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+// =====================================================================
+// 밸런스 설정값
+// =====================================================================
+const CONFIG = {
+  cutRadius: 1.0,      // 칼집 굵기 (도)
+  coverTol: 2.6,       // 선을 따라갔다고 인정하는 거리 (도)
+  nearTol: 3.6,        // 정확도에서 '선 근처'로 치는 거리 (도)
+  completeAt: 0.97,    // 이 진행도면 다 깐 것으로 끝
+  rollEdge: 0.72,      // 긋는 점이 이만큼 옆을 보면 귤이 굴러감 (1 = 정면)
+  rollSpeed: 4.0,      // 가장자리 자동 굴리기 속도
+  edgePull: 3.2,       // 긋다가 귤 밖으로 끌면 그쪽으로 굴러가는 속도
+  dragRotate: 0.011,   // 굴리기 드래그 감도
+  spinDecay: 4.0,      // 손을 뗀 뒤 관성이 줄어드는 빠르기
+  timeBonusPerSec: 10, // 다 깠을 때 남은 1초당 보너스 (진행도만큼 곱함)
+  bonusFrom: 0.8,      // '다 깠어요'로 끝낼 때 보너스를 받는 최소 진행도
+};
+
+const RANKS = [
+  { min: 900, title: '귤 까기 장인', line: '껍질만 봐도 작품이네요.' },
+  { min: 700, title: '손이 야무진 사람', line: '조금만 더 하면 장인!' },
+  { min: 450, title: '귤은 맛있으면 돼', line: '모양보다 맛이죠.' },
+  { min: -Infinity, title: '그냥 손으로 먹자', line: '귤이 조금 억울해 보여요.' },
+];
+
+// ---------------------------------------------------------------------
+// 구면 좌표 유틸 (lon 0~360, lat -90~90, 북극 = 꼭지)
+// ---------------------------------------------------------------------
+const DEG = Math.PI / 180;
+const MW = 1024, MH = 512;          // 칼집 마스크 해상도
+const TW = 1024, TH = 512;          // 귤 텍스처 해상도
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function dirFromLL(lon, lat) {
+  const th = (90 - lat) * DEG, ph = lon * DEG;
+  return new THREE.Vector3(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th));
+}
+function llFromDir(v) {
+  const th = Math.acos(clamp(v.y, -1, 1));
+  let ph = Math.atan2(v.z, -v.x); if (ph < 0) ph += Math.PI * 2;
+  return [ph / DEG, 90 - th / DEG];
+}
+function slerpV(a, b, t) {
+  const o = Math.acos(clamp(a.dot(b), -1, 1));
+  if (o < 1e-6) return a.clone();
+  const s = Math.sin(o);
+  return a.clone().multiplyScalar(Math.sin((1 - t) * o) / s).add(b.clone().multiplyScalar(Math.sin(t * o) / s));
+}
+// 경로를 0.5도 간격 점들로
+function densify(llPoints, step = 0.5) {
+  const out = [];
+  for (let i = 0; i < llPoints.length - 1; i++) {
+    const a = dirFromLL(...llPoints[i]), b = dirFromLL(...llPoints[i + 1]);
+    const n = Math.max(1, Math.ceil(a.angleTo(b) / (step * DEG)));
+    for (let k = 0; k < n; k++) out.push(slerpV(a, b, k / n));
+  }
+  out.push(dirFromLL(...llPoints[llPoints.length - 1]));
+  return out;
+}
+
+// 마스크에 원 찍기 (극 근처 왜곡 보정)
+const rowLat = Float32Array.from({ length: MH }, (_, y) => 90 - (y + 0.5) / MH * 180);
+const colLon = Float32Array.from({ length: MW }, (_, x) => (x + 0.5) / MW * 360);
+const colDirs = Array.from({ length: MW }, (_, x) => [Math.cos(colLon[x] * DEG), Math.sin(colLon[x] * DEG)]);
+function stampMask(m, lon, lat, r) {
+  const c = dirFromLL(lon, lat), cosR = Math.cos(r * DEG);
+  const rowC = (90 - lat) / 180 * MH, rr = r / 180 * MH + 1;
+  const y0 = Math.max(0, Math.floor(rowC - rr)), y1 = Math.min(MH - 1, Math.ceil(rowC + rr));
+  let fresh = false;
+  for (let y = y0; y <= y1; y++) {
+    const la = rowLat[y], th = (90 - la) * DEG, st = Math.sin(th), ct = Math.cos(th);
+    const cl = Math.max(Math.cos(la * DEG), 0.004);
+    let hw = r / cl + 1; if (hw > 180) hw = 180;
+    const xc = lon / 360 * MW, hwPx = hw / 360 * MW;
+    for (let x = Math.floor(xc - hwPx); x <= Math.ceil(xc + hwPx); x++) {
+      const xx = ((x % MW) + MW) % MW;
+      const [cp, sp] = colDirs[xx];
+      const dot = -cp * st * c.x + ct * c.y + sp * st * c.z;
+      if (dot >= cosR) { const i = y * MW + xx; if (!m[i]) { m[i] = 1; fresh = true; } }
+    }
+  }
+  return fresh;
+}
+
+// 칼집으로 완전히 둘러싸인 조각은 떨어져 나간다: 바닥(남극)과 이어진 껍질만 남김
+function keepMask(cut) {
+  const keep = new Uint8Array(MW * MH), q = new Int32Array(MW * MH);
+  let h = 0, t = 0;
+  const push = i => { if (!cut[i] && !keep[i]) { keep[i] = 1; q[t++] = i; } };
+  for (let x = 0; x < MW; x++) push((MH - 1) * MW + x);
+  let topDone = false;
+  while (h < t) {
+    const i = q[h++], y = (i / MW) | 0, x = i - y * MW;
+    push(y * MW + (x + 1) % MW); push(y * MW + (x - 1 + MW) % MW);
+    if (y > 0) push(i - MW);
+    if (y < MH - 1) push(i + MW);
+    if (y === 0 && !topDone) { topDone = true; for (let k = 0; k < MW; k++) push(k); }
+  }
+  return keep;
+}
+
+// ---------------------------------------------------------------------
+// 모양 틀
+// ---------------------------------------------------------------------
+function meridians(n, toLat, offset = 0) {
+  return Array.from({ length: n }, (_, i) => [[offset + i * 360 / n, 90], [offset + i * 360 / n, toLat]]);
+}
+function spiral(turns, fromLat, toLat) {
+  const pts = [];
+  for (let i = 0; i <= 600; i++) { const t = i / 600; pts.push([(turns * 360 * t) % 360, fromLat + (toLat - fromLat) * t]); }
+  return [pts];
+}
+// 펼친 평면(가운데 = 귤 바닥, 단위 = 도)에 그린 닫힌 윤곽을 귤 위의 선으로 옮긴다
+function planeToLL(x, y) {
+  const d = Math.hypot(x, y) * DEG, az = Math.atan2(-y, x);
+  return llFromDir(new THREE.Vector3(Math.sin(d) * Math.cos(az), -Math.cos(d), Math.sin(d) * Math.sin(az)));
+}
+function outline(pts) {
+  const out = [], all = [...pts, pts[0]];
+  for (let i = 0; i < all.length - 1; i++) {
+    const [x0, y0] = all[i], [x1, y1] = all[i + 1], n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 2));
+    for (let k = 0; k < n; k++) out.push(planeToLL(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n));
+  }
+  out.push(out[0]);
+  return [out];
+}
+const arc = (cx, cy, r, a0, a1, n = 24) => Array.from({ length: n + 1 }, (_, i) => { const a = (a0 + (a1 - a0) * i / n) * DEG; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; });
+const PERSON = [
+  ...arc(0, 104, 30, -55, 235),
+  [-12, 70], [-55, 62], [-122, 30], [-128, 8], [-60, 30], [-42, 0], [-44, -45], [-40, -135], [-10, -135], [-6, -58],
+  [6, -58], [10, -135], [40, -135], [44, -45], [42, 0], [60, 30], [128, 8], [122, 30], [55, 62], [12, 70],
+];
+const HEART = Array.from({ length: 90 }, (_, i) => { const t = i / 90 * Math.PI * 2; return [7 * 16 * Math.sin(t) ** 3, 7 * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) + 12]; });
+const STAR = Array.from({ length: 10 }, (_, i) => { const a = (90 + i * 36) * DEG, r = i % 2 ? 52 : 132; return [r * Math.cos(a), r * Math.sin(a) - 8]; });
+const PATTERNS = [
+  { id: 'flower', name: '꽃', stars: 1, time: 25, desc: '6장 꽃잎', paths: meridians(6, -15), open: true },
+  { id: 'heart', name: '하트', stars: 1, time: 30, desc: '한 바퀴 둘러 까기', paths: outline(HEART) },
+  { id: 'octopus', name: '문어', stars: 2, time: 40, desc: '긴 다리 8개', paths: meridians(8, -42, 22.5), open: true },
+  { id: 'star', name: '별', stars: 2, time: 40, desc: '뾰족한 다섯 꼭짓점', paths: outline(STAR) },
+  { id: 'swirl', name: '회오리', stars: 3, time: 45, desc: '굴려가며 한 줄로', paths: spiral(2.5, 78, -55), open: true },
+  { id: 'person', name: '사람', stars: 3, time: 45, desc: '머리, 팔, 다리까지', paths: outline(PERSON) },
+];
+for (const p of PATTERNS) {
+  p.points = p.paths.flatMap(path => densify(path, 0.5));
+  p.cover = p.points.filter((_, i) => i % 3 === 0);
+  p.mask = new Uint8Array(MW * MH);
+  for (const d of p.points) { const [lo, la] = llFromDir(d); stampMask(p.mask, lo, la, CONFIG.cutRadius); }
+  p.keep = keepMask(p.mask);
+}
+
+// ---------------------------------------------------------------------
+// 귤 껍질 텍스처
+// ---------------------------------------------------------------------
+function rnd(a, b) { return a + Math.random() * (b - a); }
+const baseCv = document.createElement('canvas'); baseCv.width = TW; baseCv.height = TH;
+const bumpCv = document.createElement('canvas'); bumpCv.width = TW; bumpCv.height = TH;
+(function paintBase() {
+  const g = baseCv.getContext('2d'), b = bumpCv.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, TH);
+  grd.addColorStop(0, '#e9761a'); grd.addColorStop(0.5, '#f58a1f'); grd.addColorStop(1, '#ec7d17');
+  g.fillStyle = grd; g.fillRect(0, 0, TW, TH);
+  for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${rnd(200, 255) | 0},${rnd(90, 140) | 0},20,${rnd(0.05, 0.14)})`; g.beginPath(); g.ellipse(rnd(0, TW), rnd(0, TH), rnd(20, 80), rnd(10, 40), 0, 0, 7); g.fill(); }
+  b.fillStyle = '#808080'; b.fillRect(0, 0, TW, TH);
+  for (let i = 0; i < 9000; i++) {
+    const x = rnd(0, TW), y = rnd(0, TH), r = rnd(0.8, 2.2);
+    const lat = 90 - y / TH * 180, sx = 1 / Math.max(0.15, Math.cos(lat * DEG));
+    b.fillStyle = `rgba(40,40,40,${rnd(0.3, 0.7)})`; b.beginPath(); b.ellipse(x, y, r * sx, r, 0, 0, 7); b.fill();
+    g.fillStyle = `rgba(190,80,0,${rnd(0.08, 0.2)})`; g.beginPath(); g.ellipse(x, y, r * sx * 0.8, r * 0.8, 0, 0, 7); g.fill();
+  }
+  // 꼭지 주변 초록빛, 바닥 배꼽
+  const top = g.createLinearGradient(0, 0, 0, TH * 0.08); top.addColorStop(0, 'rgba(120,130,20,.55)'); top.addColorStop(1, 'rgba(120,130,20,0)');
+  g.fillStyle = top; g.fillRect(0, 0, TW, TH * 0.08);
+})();
+const baseSmall = baseCv.getContext('2d').getImageData(0, 0, TW, TH).data; // MW=TW, MH=TH
+
+const skinCv = document.createElement('canvas'); skinCv.width = TW; skinCv.height = TH;
+const skin = skinCv.getContext('2d');
+function texDot(ctx, d, rDeg, color) {
+  const [lon, lat] = llFromDir(d);
+  const ry = rDeg / 180 * TH, cl = Math.max(Math.cos(lat * DEG), 0.02), rx = Math.min(TW / 2, ry / cl);
+  const x = lon / 360 * TW, y = (90 - lat) / 180 * TH;
+  ctx.fillStyle = color;
+  if (Math.abs(lat) > 86) { ctx.fillRect(0, y - ry, TW, ry * 2); return; }
+  for (const ox of [0, -TW, TW]) { if (x + ox + rx < 0 || x + ox - rx > TW) continue; ctx.beginPath(); ctx.ellipse(x + ox, y, rx, ry, 0, 0, 7); ctx.fill(); }
+}
+function resetSkin(pattern) {
+  skin.drawImage(baseCv, 0, 0);
+  // 마커로 그린 모양 틀 (점선)
+  pattern.points.forEach((d, i) => { if (Math.floor(i / 5) % 3 !== 2) texDot(skin, d, 0.42, 'rgba(45,25,10,.88)'); });
+  skinTex.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------------
+// three.js 장면
+// ---------------------------------------------------------------------
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
+camera.position.set(0, 0, 6);
+scene.add(new THREE.HemisphereLight(0xfff4e0, 0xb07040, 1.4));
+const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(-3, 4, 5); scene.add(key);
+const rim = new THREE.DirectionalLight(0xffd9a0, 1.0); rim.position.set(4, -2, -3); scene.add(rim);
+
+const skinTex = new THREE.CanvasTexture(skinCv); skinTex.colorSpace = THREE.SRGBColorSpace; skinTex.anisotropy = 4;
+const bumpTex = new THREE.CanvasTexture(bumpCv);
+const fruit = new THREE.Group(); scene.add(fruit);
+const SQUASH = 0.86;
+const peel = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), new THREE.MeshStandardMaterial({ map: skinTex, bumpMap: bumpTex, bumpScale: 0.6, roughness: 0.55 }));
+peel.scale.set(1, SQUASH, 1); fruit.add(peel);
+const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.08, 10), new THREE.MeshStandardMaterial({ color: '#5d6b1f', roughness: 0.8 }));
+stem.position.y = SQUASH + 0.02; fruit.add(stem);
+const leafShape = new THREE.Shape(); leafShape.moveTo(0, 0); leafShape.quadraticCurveTo(0.12, 0.08, 0.3, 0); leafShape.quadraticCurveTo(0.12, -0.08, 0, 0);
+const leaf = new THREE.Mesh(new THREE.ShapeGeometry(leafShape), new THREE.MeshStandardMaterial({ color: '#3f7d2a', side: THREE.DoubleSide, roughness: 0.6 }));
+leaf.rotation.set(-Math.PI / 2 + 0.25, 0, 0.5); leaf.position.set(0.02, SQUASH + 0.045, 0); fruit.add(leaf);
+// 바닥 그림자
+const shadowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(110,60,20,.38)'); gr.addColorStop(1, 'rgba(110,60,20,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
+const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.7), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+shadow.position.set(0, -1.02, -0.3); scene.add(shadow);
+
+function fit() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h;
+  const half = Math.tan(camera.fov / 2 * DEG);
+  const need = 1.22 / ((camera.aspect < 1 ? 0.6 : 0.5) * half * Math.min(1, camera.aspect));
+  camera.position.set(0, 0.05, need); camera.lookAt(0, 0, 0); camera.updateProjectionMatrix();
+}
+addEventListener('resize', fit); fit();
+
+// ---------------------------------------------------------------------
+// 게임 상태
+// ---------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const G = { pattern: PATTERNS[0], running: false, time: 0, cut: new Uint8Array(MW * MH), covered: null, coveredN: 0, total: 0, near: 0, last: null, completed: false };
+
+function startGame(pattern) {
+  G.pattern = pattern; G.running = true; G.time = pattern.time; G.completed = false;
+  G.cut = new Uint8Array(MW * MH); G.covered = new Uint8Array(pattern.cover.length); G.coveredN = 0; G.total = 0; G.near = 0; G.last = null;
+  resetSkin(pattern);
+  fruit.quaternion.setFromEuler(new THREE.Euler(0.8, 0.4, 0));
+  fruit.scale.setScalar(1); fruit.visible = true;
+  $('patternName').textContent = pattern.name; $('stars').textContent = '★'.repeat(pattern.stars);
+  $('hint').style.opacity = 1; $('hint').textContent = '귤을 꾹 누른 채 까만 선을 따라 그어요';
+  $('startScreen').classList.add('hidden'); $('resultScreen').classList.add('hidden');
+  updateHud();
+}
+function coverage() { return G.coveredN / G.pattern.cover.length; }
+function accuracy() { return G.total ? G.near / G.total : 1; }
+function updateHud() {
+  const c = coverage(), a = accuracy();
+  $('covBar').style.width = (c * 100).toFixed(0) + '%'; $('covTxt').textContent = Math.round(c * 100) + '%';
+  $('accBar').style.width = (G.total ? a * 100 : 0) + '%'; $('accTxt').textContent = G.total ? Math.round(a * 100) + '%' : '-';
+  const t = Math.max(0, Math.ceil(G.time));
+  $('timer').textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  $('timer').classList.toggle('hurry', G.running && t <= 10);
+}
+
+// 칼집 한 점
+const coverCos = Math.cos(CONFIG.coverTol * DEG), nearCos = Math.cos(CONFIG.nearTol * DEG);
+let dirty = false, cutEnergy = 0;
+function stampCut(d) {
+  const [lon, lat] = llFromDir(d);
+  const fresh = stampMask(G.cut, lon, lat, CONFIG.cutRadius);
+  if (!fresh) return;
+  texDot(skin, d, CONFIG.cutRadius * 0.95, '#fff1d6');
+  texDot(skin, d, CONFIG.cutRadius * 0.45, '#fde6bd');
+  dirty = true; cutEnergy += 1;
+  const P = G.pattern; let isNear = false;
+  for (let i = 0; i < P.cover.length; i++) {
+    const dot = P.cover[i].dot(d);
+    if (dot >= nearCos) isNear = true;
+    if (!G.covered[i] && dot >= coverCos) { G.covered[i] = 1; G.coveredN++; }
+  }
+  G.total++; if (isNear) G.near++;
+}
+function cutTo(d) {
+  if (G.last && G.last.angleTo(d) < 20 * DEG) {
+    const n = Math.max(1, Math.ceil(G.last.angleTo(d) / (0.5 * DEG)));
+    for (let i = 1; i <= n; i++) stampCut(slerpV(G.last, d, i / n));
+  } else stampCut(d);
+  G.last = d;
+}
+
+// ---------------------------------------------------------------------
+// 입력: 귤 위 = 긋기, 바깥 = 굴리기
+// ---------------------------------------------------------------------
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function hitFruit(x, y) {
+  ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const h = ray.intersectObject(peel, false)[0];
+  if (!h) return null;
+  return { local: peel.worldToLocal(h.point.clone()).normalize(), world: h.point.clone().normalize() };
+}
+let ptr = null, toolMode = 'cut';
+const touches = new Map();
+const spin = new THREE.Vector3();          // 관성 회전 (축 * 속도)
+function rollBy(dx, dy, dt) {
+  const ax = new THREE.Vector3(dy, dx, 0), ang = ax.length() * CONFIG.dragRotate;
+  if (ang < 1e-6) return;
+  ax.normalize();
+  fruit.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(ax, ang));
+  if (dt > 0) spin.lerp(ax.multiplyScalar(ang / dt), 0.5);
+}
+function setTool(m) {
+  toolMode = m; $('mCut').classList.toggle('on', m === 'cut'); $('mRoll').classList.toggle('on', m === 'roll');
+}
+$('doneBtn').onclick = () => finish(false, true);
+$('mCut').onclick = () => setTool('cut'); $('mRoll').onclick = () => setTool('roll');
+let lastMoveT = 0;
+canvas.addEventListener('pointerdown', e => {
+  if (!G.running) return;
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  initAudio();
+  if (touches.size >= 2) { ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, mode: 'rotate', multi: true }; G.last = null; return; }
+  canvas.setPointerCapture(e.pointerId);
+  const h = hitFruit(e.clientX, e.clientY);
+  const cut = toolMode === 'cut' && h && e.button !== 2;
+  ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, mode: cut ? 'cut' : 'rotate' };
+  G.last = null; spin.set(0, 0, 0); lastMoveT = performance.now();
+  if (cut) $('hint').style.opacity = 0;
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointermove', e => {
+  if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (!ptr) return;
+  if (ptr.multi) {
+    // 두 손가락: 평균 이동량만큼 굴리기
+    if (e.pointerId !== ptr.id) return;
+  } else if (e.pointerId !== ptr.id) return;
+  const now = performance.now(), dt = Math.max(0.001, (now - lastMoveT) / 1000); lastMoveT = now;
+  if (ptr.mode === 'rotate') rollBy(e.clientX - ptr.x, e.clientY - ptr.y, dt);
+  ptr.x = e.clientX; ptr.y = e.clientY;
+});
+const endPtr = e => {
+  touches.delete(e.pointerId);
+  if (ptr && (e.pointerId === ptr.id || ptr.multi && touches.size < 2)) {
+    if (ptr.mode !== 'rotate' || performance.now() - lastMoveT > 80) spin.set(0, 0, 0);
+    ptr = null; G.last = null;
+  }
+};
+canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+const keys = new Set();
+addEventListener('keydown', e => { if (e.key.startsWith('Arrow')) { keys.add(e.key); e.preventDefault(); } if (e.key === ' ') { setTool(toolMode === 'cut' ? 'roll' : 'cut'); e.preventDefault(); } });
+addEventListener('keyup', e => keys.delete(e.key));
+
+// ---------------------------------------------------------------------
+// 소리
+// ---------------------------------------------------------------------
+const audio = { ctx: null, tear: null };
+function initAudio() {
+  if (audio.ctx) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (Math.random() < 0.08 ? 1 : 0.3);
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = 0.9;
+    const gain = ctx.createGain(); gain.gain.value = 0;
+    src.connect(bp).connect(gain).connect(ctx.destination); src.start();
+    audio.ctx = ctx; audio.tear = gain;
+  } catch (e) {}
+}
+function chime(freqs) {
+  if (!audio.ctx) return;
+  const t = audio.ctx.currentTime;
+  freqs.forEach((f, i) => { const o = audio.ctx.createOscillator(), g = audio.ctx.createGain(); o.frequency.value = f; g.gain.setValueAtTime(0.0001, t + i * 0.1); g.gain.exponentialRampToValueAtTime(0.15, t + i * 0.1 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.1 + 0.4); o.connect(g).connect(audio.ctx.destination); o.start(t + i * 0.1); o.stop(t + i * 0.1 + 0.45); });
+}
+
+// ---------------------------------------------------------------------
+// 펼치기: 바닥(남극)을 중심으로 껍질을 평면에 펼친다
+// ---------------------------------------------------------------------
+function renderUnfold(cv, mask, t, colorMode, keep, open) {
+  const S = cv.width, ctx = cv.getContext('2d');
+  const img = ctx.createImageData(S, S), px = img.data;
+  // t=0: 등적(오므린 모양) → t=1: 등거리(활짝 편 모양)
+  const N = 720, rTab = new Float32Array(N + 1);
+  for (let k = 0; k <= N; k++) { const d = Math.PI * k / N; rTab[k] = (1 - t) * Math.sin(d / 2) + t * d / Math.PI; }
+  const M = 900, inv = new Float32Array(M + 1); let k = 0;
+  for (let j = 0; j <= M; j++) { const r = j / M; while (k < N && rTab[k + 1] < r) k++; const r0 = rTab[k], r1 = rTab[Math.min(N, k + 1)]; inv[j] = Math.PI * (k + (r1 > r0 ? (r - r0) / (r1 - r0) : 0)) / N; }
+  const R = S / 2 * 0.96, c = S / 2;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const dx = x - c, dy = y - c, rn = Math.hypot(dx, dy) / R;
+    if (rn > 1) continue;
+    const d = inv[Math.min(M, Math.round(rn * M))], az = Math.atan2(dy, dx);
+    const sd = Math.sin(d), vx = sd * Math.cos(az), vy = -Math.cos(d), vz = sd * Math.sin(az);
+    const th = Math.acos(clamp(vy, -1, 1)); let ph = Math.atan2(vz, -vx); if (ph < 0) ph += Math.PI * 2;
+    const mx = Math.min(MW - 1, (ph / (Math.PI * 2) * MW) | 0), my = Math.min(MH - 1, (th / Math.PI * MH) | 0);
+    const mi = my * MW + mx;
+    if (mask[mi] || (keep && !keep[mi])) continue;
+    // 바깥쪽일수록 칼집이 벌어져 꽃잎처럼 펼쳐진다
+    const gap = open ? Math.round(t * 7 * Math.pow(d / Math.PI, 2)) : 0;
+    if (gap > 0 && (mask[my * MW + (mx + gap) % MW] || mask[my * MW + (mx - gap + MW) % MW])) continue;
+    const o = (y * S + x) * 4;
+    const edge = mask[my * MW + (mx + gap + 2) % MW] || mask[my * MW + (mx - gap - 2 + MW) % MW] || (my > 1 && mask[mi - 2 * MW]) || (my < MH - 2 && mask[mi + 2 * MW]);
+    if (edge) { px[o] = 255; px[o + 1] = 236; px[o + 2] = 200; px[o + 3] = 255; continue; }
+    if (colorMode === 'flat') { px[o] = 240; px[o + 1] = 128; px[o + 2] = 28; px[o + 3] = 255; }
+    else { const b = mi * 4; px[o] = baseSmall[b]; px[o + 1] = baseSmall[b + 1]; px[o + 2] = baseSmall[b + 2]; px[o + 3] = 255; }
+  }
+  ctx.clearRect(0, 0, S, S);
+  const tmp = document.createElement('canvas'); tmp.width = tmp.height = S; tmp.getContext('2d').putImageData(img, 0, 0);
+  ctx.save(); ctx.shadowColor = 'rgba(120,60,10,.35)'; ctx.shadowBlur = S * 0.02; ctx.shadowOffsetY = S * 0.01;
+  ctx.drawImage(tmp, 0, 0); ctx.restore();
+}
+
+// 시작 화면 미리보기
+function buildLevels() {
+  const wrap = $('levels'); wrap.innerHTML = '';
+  for (const p of PATTERNS) {
+    const b = document.createElement('button'); b.className = 'lv'; b.type = 'button';
+    const cv = document.createElement('canvas'); cv.width = cv.height = 220;
+    renderUnfold(cv, p.mask, 1, 'flat', p.keep, p.open);
+    b.append(cv);
+    b.insertAdjacentHTML('beforeend', `<b>${p.name}</b><small>${'★'.repeat(p.stars)}</small><span>${p.desc} · ${p.time}초</span>`);
+    b.onclick = () => startGame(p);
+    wrap.append(b);
+  }
+}
+buildLevels();
+
+// ---------------------------------------------------------------------
+// 끝내기
+// ---------------------------------------------------------------------
+function finish(completed, manual) {
+  if (!G.running) return;
+  G.running = false; G.completed = completed || (manual && coverage() >= CONFIG.bonusFrom); ptr = null;
+  if (audio.tear) audio.tear.gain.setTargetAtTime(0, audio.ctx.currentTime, 0.05);
+  const cov = coverage(), acc = accuracy();
+  const bonus = G.completed ? Math.round(Math.max(0, G.time) * CONFIG.timeBonusPerSec * cov) : 0;
+  const score = Math.round(1000 * cov * (0.6 + 0.4 * acc)) + bonus;
+  const r = RANKS.find(k => score >= k.min);
+  G.result = { score, cov, acc, bonus, rank: r };
+  $('flash').textContent = completed ? '다 깠다!' : manual ? '여기까지!' : '시간 끝!';
+  $('flash').style.opacity = 1; chime(G.completed ? [660, 880, 1100] : [520, 390]);
+  setTimeout(() => { $('flash').style.opacity = 0; showResult(); }, 900);
+}
+function showResult() {
+  const R = G.result;
+  $('rRank').textContent = R.rank.title;
+  $('rScore').textContent = `${R.score}점` + (R.bonus ? ` (시간 보너스 +${R.bonus})` : '');
+  $('rCov').textContent = Math.round(R.cov * 100) + '%'; $('rAcc').textContent = Math.round(R.acc * 100) + '%';
+  $('rTime').textContent = Math.max(0, Math.ceil(G.time)) + '초';
+  $('msg').textContent = R.rank.line;
+  renderUnfold($('targetCv'), G.pattern.mask, 1, 'flat', G.pattern.keep, G.pattern.open);
+  $('resultBody').classList.add('hide');
+  $('resultScreen').classList.remove('hidden');
+  const cv = $('unfold'), t0 = performance.now(), dur = 1600, keep = keepMask(G.cut);
+  (function anim(now) {
+    const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    renderUnfold(cv, G.cut, e, 'skin', keep, G.pattern.open);
+    if (k < 1) requestAnimationFrame(anim); else $('resultBody').classList.remove('hide');
+  })(t0);
+}
+$('againBtn').onclick = () => startGame(G.pattern);
+$('otherBtn').onclick = () => { $('resultScreen').classList.add('hidden'); $('startScreen').classList.remove('hidden'); };
+$('saveBtn').onclick = () => {
+  try {
+    const S = 720, out = document.createElement('canvas'); out.width = S; out.height = S + 120;
+    const g = out.getContext('2d'); g.fillStyle = '#fffaf1'; g.fillRect(0, 0, out.width, out.height);
+    g.drawImage($('unfold'), 0, 0);
+    g.fillStyle = '#c85a06'; g.font = '48px Jua, sans-serif'; g.textAlign = 'center';
+    g.fillText(`${G.result.rank.title} · ${G.result.score}점`, S / 2, S + 60);
+    g.fillStyle = '#8a6a4f'; g.font = '26px "Noto Sans KR", sans-serif';
+    g.fillText(`귤 까기 장인 · ${G.pattern.name} 모양`, S / 2, S + 100);
+    const a = document.createElement('a'); a.href = out.toDataURL('image/png'); a.download = `귤까기_${G.pattern.name}.png`; a.click();
+    $('msg').textContent = '이미지를 저장했어요. 저장이 안 되면 결과 화면을 캡처해 주세요.';
+  } catch (e) { $('msg').textContent = '여기서는 저장이 막혀 있어요. 화면을 캡처해 주세요.'; }
+};
+
+// ---------------------------------------------------------------------
+// 루프
+// ---------------------------------------------------------------------
+const camDir = new THREE.Vector3();
+let last = performance.now(), idle = 0;
+function tick(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (G.running) {
+    G.time -= dt;
+    // 방향키 굴리기, 관성
+    const kx = (keys.has('ArrowRight') ? 1 : 0) - (keys.has('ArrowLeft') ? 1 : 0), ky = (keys.has('ArrowDown') ? 1 : 0) - (keys.has('ArrowUp') ? 1 : 0);
+    if (kx || ky) rollBy(kx * 260 * dt, ky * 260 * dt, 0);
+    if (!ptr && spin.lengthSq() > 1e-4) {
+      const ang = spin.length() * dt;
+      fruit.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(spin.clone().normalize(), ang));
+      spin.multiplyScalar(Math.exp(-CONFIG.spinDecay * dt));
+    }
+    if (ptr && ptr.mode === 'cut') {
+      let h = hitFruit(ptr.x, ptr.y);
+      if (!h) {
+        // 귤 밖으로 끌고 나가면: 테두리 바로 안쪽에서 계속 긋고, 그 방향으로 굴린다
+        const c = new THREE.Vector3(0, 0, 0).project(camera), e1 = new THREE.Vector3(1, 0, 0).project(camera);
+        const cx = (c.x + 1) / 2 * innerWidth, cy = (1 - c.y) / 2 * innerHeight, rpx = Math.abs(e1.x - c.x) / 2 * innerWidth;
+        const vx = ptr.x - cx, vy = ptr.y - cy, dist = Math.hypot(vx, vy) || 1;
+        const over = Math.min(1.5, (dist - rpx) / rpx);
+        h = hitFruit(cx + vx / dist * rpx * 0.9, cy + vy / dist * rpx * SQUASH * 0.9) || hitFruit(cx + vx / dist * rpx * 0.75, cy + vy / dist * rpx * 0.75);
+        const axis = new THREE.Vector3(-vy / dist, -vx / dist, 0).normalize();
+        fruit.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(axis, CONFIG.edgePull * (0.35 + over) * dt));
+      }
+      if (h) {
+        cutTo(h.local);
+        // 가장자리에서 긋고 있으면 귤을 굴려서 그 지점을 앞으로 가져온다
+        camDir.copy(camera.position).normalize();
+        const facing = h.world.dot(camDir);
+        if (facing < CONFIG.rollEdge) {
+          const axis = new THREE.Vector3().crossVectors(h.world, camDir).normalize();
+          fruit.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(axis, CONFIG.rollSpeed * (CONFIG.rollEdge - facing) * dt));
+        }
+      } else G.last = null;
+    }
+    if (coverage() >= CONFIG.completeAt) finish(true);
+    else if (G.time <= 0) { G.time = 0; finish(false); }
+    updateHud();
+  } else if (!$('startScreen').classList.contains('hidden')) {
+    fruit.rotateY(dt * 0.4);
+  }
+  if (dirty) { skinTex.needsUpdate = true; dirty = false; }
+  if (audio.tear) audio.tear.gain.setTargetAtTime(Math.min(0.22, cutEnergy * 0.02), audio.ctx.currentTime, 0.04);
+  cutEnergy = 0;
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+resetSkin(PATTERNS[0]);
+fruit.quaternion.setFromEuler(new THREE.Euler(0.8, 0.4, 0));
+requestAnimationFrame(tick);
+
+// 테스트용
+window.__gyul = { G, PATTERNS, startGame, finish, dirFromLL, cutTo, stampCut, coverage, accuracy, hitFruit, fruit, camera,
+  screenOf: (lon, lat) => { const v = peel.localToWorld(dirFromLL(lon, lat)).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight, z: v.z }; } };
+</script>
+</body>
+</html>
