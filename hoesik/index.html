@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>막내의 회식</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#2b1a10; --paper:#fff8ee; --accent:#e8582c; --good:#3fa34d; --bad:#d8433a; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#24170f; font-family:'Noto Sans KR',sans-serif; color:var(--ink); user-select:none; -webkit-user-select:none; word-break:keep-all; }
+  canvas#scene { position:fixed; inset:0; width:100%; height:100%; touch-action:none; display:block; }
+  .hud { position:fixed; pointer-events:none; }
+  #top { top:12px; left:12px; right:12px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  #boss { display:flex; align-items:center; gap:10px; background:var(--paper); border-radius:16px; padding:8px 14px 8px 8px; box-shadow:0 4px 0 rgba(0,0,0,.25); }
+  #bossFace { font-size:34px; width:48px; height:48px; display:grid; place-items:center; background:#ffe3c2; border-radius:50%; transition:transform .2s; }
+  #bossFace.bump { transform:scale(1.25) rotate(-6deg); }
+  #bossName { font-family:'Jua'; font-size:17px; }
+  #moodBar { width:120px; height:10px; background:#e8dccb; border-radius:6px; overflow:hidden; margin-top:4px; }
+  #moodFill { height:100%; width:60%; background:var(--good); transition:width .25s, background .25s; }
+  #moodLabel { font-size:11px; color:#7a6655; margin-top:2px; }
+  #rightTop { display:flex; gap:8px; align-items:center; }
+  #timer { font-family:'Jua'; font-size:22px; background:var(--paper); border-radius:14px; padding:8px 14px; box-shadow:0 4px 0 rgba(0,0,0,.25); min-width:84px; text-align:center; }
+  #timer.hurry { color:var(--bad); }
+  #mute { pointer-events:auto; border:0; font-size:20px; width:44px; height:44px; border-radius:12px; background:var(--paper); box-shadow:0 4px 0 rgba(0,0,0,.25); cursor:pointer; }
+  #bubble { top:92px; left:16px; max-width:min(320px,80vw); background:#fff; border-radius:14px; padding:10px 14px; font-size:15px; font-weight:700; box-shadow:0 4px 12px rgba(0,0,0,.3); opacity:0; transform:translateY(-6px); transition:opacity .2s, transform .2s; }
+  #bubble.show { opacity:1; transform:none; }
+  #bubble::before { content:''; position:absolute; top:-8px; left:22px; border:8px solid transparent; border-top:0; border-bottom-color:#fff; }
+  #bottom { bottom:14px; left:12px; right:12px; display:flex; justify-content:center; gap:10px; }
+  .btn { pointer-events:auto; border:0; cursor:pointer; font-family:'Jua'; font-size:18px; padding:12px 18px; border-radius:16px; background:var(--paper); color:var(--ink); box-shadow:0 5px 0 rgba(0,0,0,.3); display:flex; align-items:center; gap:6px; }
+  .btn:active { transform:translateY(3px); box-shadow:0 2px 0 rgba(0,0,0,.3); }
+  .btn.on { background:var(--accent); color:#fff; }
+  .btn.meat { background:#ffd6c9; }
+  @media (max-width:440px) { .btn { font-size:15px; padding:11px 12px; } #bottom { gap:6px; } #moodBar { width:90px; } #timer { font-size:19px; min-width:70px; } }
+  .btn { white-space:nowrap; }
+  #hint { bottom:84px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.6); color:#fff; padding:8px 14px; border-radius:20px; font-size:14px; white-space:nowrap; transition:opacity .3s; }
+  .label3d { position:fixed; transform:translate(-50%,-50%); font-family:'Jua'; font-size:13px; color:#fff; background:rgba(0,0,0,.45); padding:3px 9px; border-radius:10px; white-space:nowrap; pointer-events:none; }
+  .toast { position:fixed; transform:translate(-50%,-50%); font-family:'Jua'; font-size:22px; pointer-events:none; text-shadow:0 2px 0 rgba(0,0,0,.5); animation:floatUp 1.1s ease-out forwards; white-space:nowrap; }
+  @keyframes floatUp { from { opacity:1; margin-top:0; } to { opacity:0; margin-top:-56px; } }
+  svg#trail { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; }
+  .overlay { position:fixed; inset:0; display:grid; place-items:center; background:rgba(20,12,7,.72); padding:20px; }
+  .overlay.hidden { display:none; }
+  .card { background:var(--paper); border-radius:22px; padding:26px 24px; max-width:380px; width:100%; text-align:center; box-shadow:0 8px 0 rgba(0,0,0,.35); }
+  .card h1 { font-family:'Jua'; font-weight:400; font-size:38px; margin:0 0 4px; }
+  .card .sub { color:#8a5a3c; margin:0 0 18px; font-size:15px; }
+  .card ul { text-align:left; padding:0; margin:0 0 20px; list-style:none; font-size:14px; line-height:1.55; }
+  .card li { padding:6px 0; border-bottom:1px dashed #e6d6c2; }
+  .card .btn { margin:0 auto; font-size:20px; padding:14px 30px; background:var(--accent); color:#fff; }
+  .rank { font-family:'Jua'; font-size:34px; color:var(--accent); margin:6px 0; }
+  .quote { background:#fff; border-radius:12px; padding:12px; margin:12px 0 16px; font-weight:700; }
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px; font-size:14px; }
+  .stats div { background:#f3e7d6; border-radius:10px; padding:8px; }
+  .stats b { display:block; font-family:'Jua'; font-size:22px; font-weight:400; }
+  .row { display:flex; gap:10px; justify-content:center; }
+  .row .btn.ghost { background:#f3e7d6; color:var(--ink); }
+  #copied { font-size:13px; color:#8a5a3c; height:18px; margin-top:8px; }
+  .backlink { display:inline-block; margin-top:14px; font-size:14px; color:inherit; opacity:.65; text-decoration:none; font-family:'Noto Sans KR',sans-serif; }
+  .backlink:hover { opacity:1; text-decoration:underline; }
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<svg id="trail"><polyline id="trailLine" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 8" opacity="0.9"/></svg>
+
+<div id="top" class="hud">
+  <div id="boss">
+    <div id="bossFace">🙂</div>
+    <div>
+      <div id="bossName">김 부장님</div>
+      <div id="moodBar"><div id="moodFill"></div></div>
+      <div id="moodLabel">기분 65</div>
+    </div>
+  </div>
+  <div id="rightTop">
+    <div id="timer">2:00</div>
+    <button id="mute" title="소리">🔊</button>
+  </div>
+</div>
+<div id="bubble" class="hud"></div>
+<div id="hint" class="hud">🥩 버튼을 눌러 고기를 불판에 올려요</div>
+<div id="bottom" class="hud">
+  <button class="btn meat" id="addMeat">🥩 고기 올리기</button>
+  <button class="btn on" id="modeTongs">🥢 집게</button>
+  <button class="btn" id="modeScissors">✂️ 가위</button>
+</div>
+<div class="label3d" id="lblPlate">부장님 앞접시</div>
+<div class="label3d" id="lblTrash">잔반 그릇</div>
+<div class="label3d" id="lblTray">생고기</div>
+
+<div class="overlay" id="startScreen">
+  <div class="card">
+    <h1>막내의 회식</h1>
+    <p class="sub">부장님 앞접시를 비우지 마라</p>
+    <ul>
+      <li>🥩 <b>고기 올리기</b>로 삼겹살을 불판에 올려요</li>
+      <li>🥢 <b>집게</b>: 고기를 탭하면 뒤집고, 끌면 옮겨요</li>
+      <li>✂️ <b>가위</b>: 고기 위를 위아래로 그어 한입 크기로 잘라요</li>
+      <li>🍽️ 잘 익은 조각을 <b>부장님 앞접시</b>로 끌어다 놓아요</li>
+      <li>🔥 탄 고기는 연기가 나요. <b>잔반 그릇</b>에 버리세요</li>
+    </ul>
+    <button class="btn" id="startBtn">회식 시작</button>
+    <div><a class="backlink" href="../">← 게임 목록</a></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="resultScreen">
+  <div class="card">
+    <div class="sub" style="margin:0">오늘의 회식 평가</div>
+    <div class="rank" id="rRank">센스 있는 막내</div>
+    <div class="quote" id="rQuote">"허허"</div>
+    <div class="stats">
+      <div>부장님 기분<b id="rMood">0</b></div>
+      <div>대접한 조각<b id="rServed">0</b></div>
+      <div>완벽한 조각<b id="rPerfect">0</b></div>
+      <div>태운 고기<b id="rBurnt">0</b></div>
+    </div>
+    <div class="row">
+      <button class="btn ghost" id="copyBtn">결과 복사</button>
+      <button class="btn" id="againBtn">다시 하기</button>
+    </div>
+    <div><a class="backlink" href="../">← 게임 목록</a></div>
+    <div id="copied"></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+// =====================================================================
+// 밸런스 설정값: 여기 숫자만 바꿔서 손맛을 튜닝하세요
+// =====================================================================
+const CONFIG = {
+  roundSeconds: 120,                       // 회식 시간(초)
+  grill: { radius: 4.4, centerHeat: 1.0, edgeHeat: 0.5 },  // 불판 크기, 가운데/가장자리 화력
+  meat: { length: 3.6, width: 0.85, thickness: 0.26 },     // 삼겹살 한 줄 크기
+  cook: {
+    rate: 0.11,      // 화력 1.0에서 아랫면이 1초에 익는 정도
+    topRate: 0.12,   // 윗면은 아랫면 속도의 몇 배로 익는지
+  },
+  doneness: {        // 익힘 기준값 (0 = 생고기)
+    raw: 0.45,       // 이보다 낮으면 생고기
+    under: 0.75,     // 이보다 낮으면 덜 익음
+    perfectMax: 1.25,// 여기까지 완벽, 넘으면 바싹
+    burnt: 1.5,      // 넘으면 탐 (연기 발생)
+  },
+  bite: { min: 0.55, max: 1.05 },          // 한입 크기로 인정하는 조각 길이
+  boss: {
+    startMood: 70,
+    eatInterval: 4.5,  // 앞접시 고기를 한 조각 먹는 간격(초)
+    startGrace: 22,    // 시작 후 빈 접시를 봐주는 시간(초)
+    patience: 8,       // 접시가 빈 뒤 참는 시간(초)
+    emptyDrain: 1.5,   // 빈 접시일 때 초당 기분 감소
+    grillingMercy: 0.4,// 불판에 고기가 굽고 있으면 감소량에 곱하는 값 (기다려 준다)
+    smokeDrain: 1.0,   // 불판에 탄 고기가 있을 때 초당 기분 감소
+  },
+  score: { perfect: 10, crispy: 4, under: -8, raw: -18, burnt: -14, tooBig: -6, tooSmall: -4, whole: -10 },
+  flipTime: 0.3,
+};
+
+const RANKS = [
+  { min: 90, title: '고속 승진 예정', line: '자네, 내년에 우리 팀 맡아볼 생각 없나?' },
+  { min: 72, title: '센스 있는 막내', line: '허허, 고기 굽는 걸 보면 일하는 게 보여.' },
+  { min: 52, title: '무난한 신입', line: '음, 다음엔 좀 더 분발하게.' },
+  { min: 30, title: '눈치 교육 대상', line: '자네 회식 처음인가?' },
+  { min: -Infinity, title: '회식 열외 확정', line: '다음 회식은... 안 와도 되겠어.' },
+];
+
+const LINES = {
+  start: ['자, 오늘 고기는 막내가 구워봐.'],
+  perfect: ['오, 딱 좋네!', '이 사람, 고기 좀 굽네?', '역시 막내가 구워야 맛있어.', '음~ 이 맛이지.'],
+  crispy: ['음, 바싹하네. 나쁘지 않아.', '좀 바삭하구먼.'],
+  under: ['이거... 좀 덜 익은 거 같은데?', '핏기가 좀 보이네?'],
+  raw: ['아니 이걸 날로 먹으라고?', '자네, 이거 생고긴데...'],
+  burnt: ['쓰읍... 탄 거 아냐 이거?', '숯을 주는구먼.'],
+  tooBig: ['한입에 안 들어가잖아.', '좀 작게 잘라주지.'],
+  tooSmall: ['이건 뭐 부스러기네.', '감질나는구먼.'],
+  whole: ['...통째로?', '가위는 장식인가?'],
+  waiting: ['고기 언제 익나~?', '(불판을 힐끗 본다)', '천천히 해, 천천히.'],
+  empty: ['고기가... 없네?', '(빈 접시를 쳐다본다)', '흠흠.', '요즘 신입들은 말이야...'],
+  smoke: ['어디서 타는 냄새 나는데?', '연기 좀 봐라, 콜록.'],
+  trash: ['아깝게 왜 버려?'],
+};
+
+// ---------------------------------------------------------------------
+// 기본 세팅
+// ---------------------------------------------------------------------
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#24170f');
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+
+scene.add(new THREE.HemisphereLight(0xfff0dc, 0x3a2416, 0.9));
+const sun = new THREE.DirectionalLight(0xfff4e6, 1.8);
+sun.position.set(4, 14, 7);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 40 });
+scene.add(sun);
+const glow = new THREE.PointLight(0xff6a2a, 6, 7, 1.6);
+glow.position.set(0, 0.5, 0);
+scene.add(glow);
+
+const GRILL_Y = 0.25;
+const MEAT_Y = GRILL_Y + CONFIG.meat.thickness / 2;
+const PLATE = new THREE.Vector3(0, 0, -6.4), PLATE_R = 1.45;
+const TRASH = new THREE.Vector3(-6.2, 0, 3.4), TRASH_R = 1.1;
+const TRAY = new THREE.Vector3(6.2, 0, 3.4);
+const trashGroup = new THREE.Group(), trayGroup = new THREE.Group();
+scene.add(trashGroup, trayGroup);
+
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+// 테이블
+const woodTex = canvasTex(512, 512, (g, w, h) => {
+  g.fillStyle = '#6b4128'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 90; i++) {
+    g.strokeStyle = `rgba(${40 + Math.random() * 30},${20 + Math.random() * 15},10,${0.15 + Math.random() * 0.2})`;
+    g.lineWidth = 1 + Math.random() * 3; g.beginPath();
+    const y = Math.random() * h; g.moveTo(0, y);
+    for (let x = 0; x <= w; x += 32) g.lineTo(x, y + Math.sin(x * 0.02 + i) * 4);
+    g.stroke();
+  }
+});
+woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping; woodTex.repeat.set(3, 3);
+const table = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.8 }));
+table.rotation.x = -Math.PI / 2; table.receiveShadow = true; scene.add(table);
+
+// 불판
+const R = CONFIG.grill.radius;
+const grillBody = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.35, R + 0.15, 0.2, 64), new THREE.MeshStandardMaterial({ color: '#2a2a2c', metalness: 0.6, roughness: 0.5 }));
+grillBody.position.y = 0.1; grillBody.receiveShadow = true; scene.add(grillBody);
+const rim = new THREE.Mesh(new THREE.TorusGeometry(R + 0.3, 0.09, 12, 64), new THREE.MeshStandardMaterial({ color: '#8d8d92', metalness: 0.9, roughness: 0.3 }));
+rim.rotation.x = Math.PI / 2; rim.position.y = 0.22; scene.add(rim);
+const coalTex = canvasTex(256, 256, (g, w, h) => {
+  const grd = g.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2);
+  grd.addColorStop(0, '#ffb347'); grd.addColorStop(0.55, '#ff5a1f'); grd.addColorStop(1, '#3a0d00');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(30,10,0,${Math.random() * 0.5})`; g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 3 + Math.random() * 9, 0, 7); g.fill(); }
+});
+const coalMat = new THREE.MeshStandardMaterial({ map: coalTex, emissive: 0xff5a1f, emissiveMap: coalTex, emissiveIntensity: 0.6 });
+const coal = new THREE.Mesh(new THREE.CircleGeometry(R, 64), coalMat);
+coal.rotation.x = -Math.PI / 2; coal.position.y = 0.205; scene.add(coal);
+const barMat = new THREE.MeshStandardMaterial({ color: '#3a3a3d', metalness: 0.8, roughness: 0.4 });
+for (let z = -R + 0.25; z < R; z += 0.34) {
+  const half = Math.sqrt(Math.max(0, R * R - z * z));
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(half * 2, 0.04, 0.06), barMat);
+  bar.position.set(0, GRILL_Y - 0.02, z); scene.add(bar);
+}
+
+// 부장님 앞접시
+const plateMat = new THREE.MeshStandardMaterial({ color: '#f7f4ef', roughness: 0.35, emissive: 0x000000 });
+const plate = new THREE.Mesh(new THREE.CylinderGeometry(PLATE_R, PLATE_R * 0.8, 0.1, 48), plateMat);
+plate.position.set(PLATE.x, 0.05, PLATE.z); plate.castShadow = plate.receiveShadow = true; scene.add(plate);
+const plateRim = new THREE.Mesh(new THREE.TorusGeometry(PLATE_R - 0.05, 0.05, 8, 48), plateMat);
+plateRim.rotation.x = Math.PI / 2; plateRim.position.set(PLATE.x, 0.11, PLATE.z); scene.add(plateRim);
+
+// 잔반 그릇
+const trashMat = new THREE.MeshStandardMaterial({ color: '#c9b79c', roughness: 0.6, emissive: 0x000000 });
+const trash = new THREE.Mesh(new THREE.CylinderGeometry(TRASH_R, TRASH_R * 0.7, 0.45, 40, 1, true), trashMat);
+trash.material.side = THREE.DoubleSide;
+trash.position.set(0, 0.22, 0); trash.castShadow = true; trashGroup.add(trash);
+const trashBottom = new THREE.Mesh(new THREE.CircleGeometry(TRASH_R * 0.7, 32), new THREE.MeshStandardMaterial({ color: '#8f7c63' }));
+trashBottom.rotation.x = -Math.PI / 2; trashBottom.position.set(0, 0.02, 0); trashGroup.add(trashBottom);
+
+// 소품: 소주, 잔, 반찬
+function addBottle(x, z) {
+  const m = new THREE.MeshStandardMaterial({ color: '#2f8f4e', transparent: true, opacity: 0.85, roughness: 0.15 });
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 1.6, 24), m); b.position.set(x, 0.8, z); b.castShadow = true; scene.add(b);
+  const n = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.32, 0.6, 24), m); n.position.set(x, 1.9, z); scene.add(n);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.15, 16), new THREE.MeshStandardMaterial({ color: '#1f6b3a', metalness: 0.5 })); cap.position.set(x, 2.27, z); scene.add(cap);
+}
+function addGlass(x, z) {
+  const g = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 0.5, 20, 1, true), new THREE.MeshStandardMaterial({ color: '#dfeff2', transparent: true, opacity: 0.45, side: THREE.DoubleSide, roughness: 0.1 }));
+  g.position.set(x, 0.25, z); scene.add(g);
+}
+function addBowl(x, z, color) {
+  const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.5, 0.3, 28), new THREE.MeshStandardMaterial({ color: '#f2efe8', roughness: 0.4 }));
+  bowl.position.set(x, 0.15, z); bowl.castShadow = true; scene.add(bowl);
+  const food = new THREE.Mesh(new THREE.SphereGeometry(0.55, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
+  food.scale.y = 0.35; food.position.set(x, 0.28, z); scene.add(food);
+}
+addBottle(3.4, -6.9); addGlass(4.5, -6.1); addGlass(-4.6, -5.9);
+addBowl(-3.2, -6.7, '#c8381f'); addBowl(-5.6, -6.6, '#e6d36b'); addBowl(5.9, -6.5, '#4e8f3a');
+
+// 생고기 쟁반
+const tray = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 3.6), new THREE.MeshStandardMaterial({ color: '#d8d2c8', metalness: 0.4, roughness: 0.4 }));
+tray.position.set(0, 0.06, 0); tray.castShadow = tray.receiveShadow = true; trayGroup.add(tray);
+
+// 삼겹살 텍스처 (지방/살코기 층)
+const meatTex = canvasTex(64, 256, (g, w, h) => {
+  let y = 0, fat = true;
+  while (y < h) {
+    const band = fat ? 14 + Math.random() * 22 : 22 + Math.random() * 34;
+    g.fillStyle = fat ? '#f6e6d8' : '#e48c88';
+    g.fillRect(0, y, w, band + 1);
+    y += band; fat = !fat;
+  }
+  for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.15})`; g.fillRect(0, Math.random() * h, w, 2); }
+});
+
+for (let i = 0; i < 3; i++) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(CONFIG.meat.width, CONFIG.meat.thickness, 3.0), new THREE.MeshStandardMaterial({ map: meatTex, roughness: 0.6 }));
+  m.position.set(-0.8 + i * 0.8, 0.12 + CONFIG.meat.thickness / 2, 0); m.castShadow = true; trayGroup.add(m);
+}
+
+// 연기 파티클
+const smokeTex = canvasTex(64, 64, (g, w, h) => {
+  const grd = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(90,90,90,0.9)'); grd.addColorStop(1, 'rgba(90,90,90,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+});
+const smokes = [];
+function puff(x, z, dark) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, transparent: true, depthWrite: false, color: dark ? 0x6a6a6a : 0xeeeeee, opacity: dark ? 0.8 : 0.35 }));
+  s.position.set(x + (Math.random() - 0.5) * 0.6, MEAT_Y + 0.2, z + (Math.random() - 0.5) * 0.4);
+  s.scale.setScalar(0.5);
+  s.userData = { life: 0, max: 1.6 + Math.random() * 0.8, vx: (Math.random() - 0.5) * 0.3 };
+  scene.add(s); smokes.push(s);
+}
+
+// ---------------------------------------------------------------------
+// 고기 조각
+// ---------------------------------------------------------------------
+const COLOR_STOPS = [
+  [0, [1, 1, 1]], [0.45, [0.97, 0.82, 0.68]], [0.75, [0.86, 0.56, 0.3]], [1.25, [0.58, 0.32, 0.14]], [1.6, [0.22, 0.12, 0.06]], [2.4, [0.08, 0.06, 0.05]],
+];
+function cookColor(c, out) {
+  let a = COLOR_STOPS[0], b = COLOR_STOPS[COLOR_STOPS.length - 1];
+  for (let i = 0; i < COLOR_STOPS.length - 1; i++) if (c >= COLOR_STOPS[i][0] && c <= COLOR_STOPS[i + 1][0]) { a = COLOR_STOPS[i]; b = COLOR_STOPS[i + 1]; break; }
+  if (c > b[0]) a = b;
+  const t = a === b ? 0 : (c - a[0]) / (b[0] - a[0]);
+  return out.setRGB(a[1][0] + (b[1][0] - a[1][0]) * t, a[1][1] + (b[1][1] - a[1][1]) * t, a[1][2] + (b[1][2] - a[1][2]) * t);
+}
+
+const pieces = [];
+let nextId = 1;
+function makePiece(len, x, z, cookTop = 0, cookBottom = 0) {
+  const mats = Array.from({ length: 6 }, () => new THREE.MeshStandardMaterial({ map: meatTex, roughness: 0.55 }));
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, CONFIG.meat.thickness, CONFIG.meat.width), mats);
+  mesh.castShadow = true; mesh.position.set(x, MEAT_Y, z);
+  scene.add(mesh);
+  const p = { id: nextId++, mesh, len, cookTop, cookBottom, state: 'grill', home: new THREE.Vector3(x, MEAT_Y, z), anim: null, smokeT: 0 };
+  mesh.userData.piece = p;
+  pieces.push(p); paintPiece(p);
+  return p;
+}
+const tmpA = new THREE.Color(), tmpB = new THREE.Color();
+function paintPiece(p) {
+  const m = p.mesh.material;
+  cookColor(p.cookTop, tmpA); cookColor(p.cookBottom, tmpB);
+  m[2].color.copy(tmpA); m[3].color.copy(tmpB);
+  const side = tmpA.clone().lerp(tmpB, 0.65);
+  for (const i of [0, 1, 4, 5]) m[i].color.copy(side);
+}
+function removePiece(p) {
+  scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.forEach(m => m.dispose());
+  const i = pieces.indexOf(p); if (i >= 0) pieces.splice(i, 1);
+}
+const onGrill = () => pieces.filter(p => ['grill', 'flip', 'drop', 'return', 'drag'].includes(p.state));
+function heatAt(x, z) {
+  const r = Math.hypot(x, z) / R;
+  if (r > 1) return 0;
+  return CONFIG.grill.centerHeat - (CONFIG.grill.centerHeat - CONFIG.grill.edgeHeat) * r * r;
+}
+function isFree(x, z, len, ignore) {
+  return !onGrill().some(p => p !== ignore && Math.abs(p.mesh.position.z - z) < CONFIG.meat.width * 0.95 && Math.abs(p.mesh.position.x - x) < (p.len + len) / 2 + 0.05);
+}
+
+// ---------------------------------------------------------------------
+// 게임 상태
+// ---------------------------------------------------------------------
+const G = { running: false, time: 0, mood: 0, emptyT: 0, eatT: 0, plate: [], stats: null, mode: 'tongs', lineCd: {}, smokeT: 0, tut: 0 };
+
+function resetGame() {
+  [...pieces].forEach(removePiece);
+  smokes.splice(0).forEach(s => scene.remove(s));
+  Object.assign(G, { running: true, time: CONFIG.roundSeconds, mood: CONFIG.boss.startMood, emptyT: -CONFIG.boss.startGrace, eatT: 0, plate: [], stats: { served: 0, perfect: 0, burnt: 0, trashed: 0 }, lineCd: {}, tut: 0 });
+  setMode('tongs'); setHint(0); updateHud();
+  say(pick(LINES.start), true);
+}
+
+// ---------------------------------------------------------------------
+// HUD
+// ---------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+let bubbleTimer = null;
+function say(text, force) {
+  const b = $('bubble');
+  b.textContent = text; b.classList.add('show');
+  clearTimeout(bubbleTimer); bubbleTimer = setTimeout(() => b.classList.remove('show'), 2400);
+  const f = $('bossFace'); f.classList.add('bump'); setTimeout(() => f.classList.remove('bump'), 200);
+}
+function sayCd(key, cd) {
+  const now = performance.now() / 1000;
+  if ((G.lineCd[key] || 0) > now) return;
+  G.lineCd[key] = now + cd; say(pick(LINES[key]));
+}
+function updateHud() {
+  const m = Math.round(G.mood);
+  $('moodFill').style.width = m + '%';
+  $('moodFill').style.background = m >= 70 ? '#3fa34d' : m >= 45 ? '#e6a527' : '#d8433a';
+  $('moodLabel').textContent = '기분 ' + m;
+  $('bossFace').textContent = m >= 85 ? '😄' : m >= 60 ? '🙂' : m >= 40 ? '😐' : m >= 20 ? '😒' : '😠';
+  const t = Math.max(0, Math.ceil(G.time));
+  $('timer').textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  $('timer').classList.toggle('hurry', t <= 15);
+}
+const HINTS = [
+  '🥩 버튼을 눌러 고기를 불판에 올려요',
+  '🥢 아랫면이 노릇해지면 고기를 탭해서 뒤집어요',
+  '✂️ 가위로 바꾸고, 고기 위를 위아래로 그어 잘라요',
+  '🥢 잘 익은 조각을 부장님 앞접시로 끌어다 놓아요',
+];
+function setHint(i) {
+  G.tut = i;
+  const h = $('hint');
+  if (i >= HINTS.length) { h.style.opacity = 0; return; }
+  h.style.opacity = 1; h.textContent = HINTS[i];
+}
+function advanceHint(step) { if (G.tut === step) setHint(step + 1); }
+
+const tmpV = new THREE.Vector3();
+function toScreen(v) {
+  tmpV.copy(v).project(camera);
+  return { x: (tmpV.x + 1) / 2 * innerWidth, y: (1 - tmpV.y) / 2 * innerHeight };
+}
+function toast(text, color, at) {
+  const s = toScreen(at);
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = text; el.style.color = color;
+  el.style.left = s.x + 'px'; el.style.top = s.y + 'px';
+  document.body.appendChild(el); setTimeout(() => el.remove(), 1150);
+}
+function placeLabels() {
+  const put = (id, v) => { const s = toScreen(v); const el = $(id); el.style.left = s.x + 'px'; el.style.top = s.y + 'px'; };
+  put('lblPlate', new THREE.Vector3(PLATE.x, 0.2, PLATE.z + PLATE_R + 0.45));
+  put('lblTrash', new THREE.Vector3(TRASH.x, 0.2, TRASH.z + TRASH_R + 0.45));
+  put('lblTray', new THREE.Vector3(TRAY.x, 0.2, TRAY.z + (trayGroup.rotation.y ? 1.75 : 2.25)));
+}
+
+// ---------------------------------------------------------------------
+// 소리 (WebAudio, 시작 버튼을 누른 뒤 켜짐)
+// ---------------------------------------------------------------------
+const audio = { ctx: null, sizzle: null, muted: false };
+function initAudio() {
+  if (audio.ctx) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (Math.random() < 0.02 ? 1 : 0.35);
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 3200; bp.Q.value = 0.6;
+    const gain = ctx.createGain(); gain.gain.value = 0;
+    src.connect(bp).connect(gain).connect(ctx.destination); src.start();
+    audio.ctx = ctx; audio.sizzle = gain; audio.noise = buf;
+  } catch (e) { audio.ctx = null; }
+}
+function blip(type) {
+  if (!audio.ctx || audio.muted) return;
+  const ctx = audio.ctx, t = ctx.currentTime;
+  const g = ctx.createGain(); g.connect(ctx.destination);
+  if (type === 'snip') {
+    const s = ctx.createBufferSource(); s.buffer = audio.noise;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5000;
+    s.connect(hp).connect(g); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    s.start(t, Math.random()); s.stop(t + 0.08);
+  } else {
+    const o = ctx.createOscillator(); o.type = 'sine';
+    const f = { good: [660, 990], bad: [300, 180], flip: [420, 520], place: [200, 140] }[type] || [440, 440];
+    o.frequency.setValueAtTime(f[0], t); o.frequency.exponentialRampToValueAtTime(f[1], t + 0.15);
+    g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    o.connect(g); o.start(t); o.stop(t + 0.22);
+  }
+}
+
+// ---------------------------------------------------------------------
+// 행동: 올리기, 뒤집기, 자르기, 대접하기, 버리기
+// ---------------------------------------------------------------------
+const SLOTS = [-2.6, -1.3, 0, 1.3, 2.6, -3.5, 3.5];
+function addMeat() {
+  if (!G.running) return;
+  const L = CONFIG.meat.length;
+  for (const z of SLOTS) {
+    const half = Math.sqrt(Math.max(0, R * R - z * z));
+    if (half < L / 2 + 0.1) continue;
+    if (isFree(0, z, L)) {
+      const p = makePiece(L, 0, z);
+      p.mesh.position.y = 2.5;
+      p.state = 'drop'; p.anim = { t: 0 };
+      blip('place');
+      advanceHint(0);
+      return;
+    }
+  }
+  toast('불판이 꽉 찼어요', '#fff', new THREE.Vector3(0, 0.5, 0));
+}
+function flip(p) {
+  if (p.state !== 'grill') return;
+  p.state = 'flip'; p.anim = { t: 0 }; blip('flip');
+  advanceHint(1);
+}
+function cutPiece(p, xc) {
+  const pos = p.mesh.position, left = pos.x - p.len / 2;
+  const L1 = xc - left, L2 = p.len - L1;
+  if (L1 < 0.22 || L2 < 0.22) return false;
+  const gap = 0.05;
+  makePiece(L1, left + L1 / 2 - gap, pos.z, p.cookTop, p.cookBottom);
+  makePiece(L2, xc + L2 / 2 + gap, pos.z, p.cookTop, p.cookBottom);
+  removePiece(p);
+  return true;
+}
+function grade(p) {
+  const D = CONFIG.doneness, lo = Math.min(p.cookTop, p.cookBottom), hi = Math.max(p.cookTop, p.cookBottom);
+  if (lo < D.raw) return 'raw';
+  if (hi > D.burnt) return 'burnt';
+  if (lo < D.under) return 'under';
+  if (hi > D.perfectMax) return 'crispy';
+  return 'perfect';
+}
+const GRADE_TEXT = { perfect: '완벽!', crispy: '바싹', under: '덜 익음', raw: '생고기', burnt: '탐' };
+function serve(p) {
+  const S = CONFIG.score;
+  const g = grade(p);
+  let delta = S[g], sizeKey = null;
+  if (p.len > CONFIG.meat.length * 0.75) sizeKey = 'whole';
+  else if (p.len > CONFIG.bite.max) sizeKey = 'tooBig';
+  else if (p.len < CONFIG.bite.min) sizeKey = 'tooSmall';
+  if (sizeKey) delta += S[sizeKey];
+  G.mood = Math.max(0, Math.min(100, G.mood + delta));
+  G.stats.served++; if (g === 'perfect' && !sizeKey) G.stats.perfect++; if (g === 'burnt') G.stats.burnt++;
+  const badDone = ['raw', 'burnt', 'under'].includes(g);
+  say(pick(LINES[badDone ? g : sizeKey || g]));
+  const label = sizeKey === 'whole' ? '통째로?!' : sizeKey === 'tooBig' ? GRADE_TEXT[g] + ' · 너무 큼' : sizeKey === 'tooSmall' ? GRADE_TEXT[g] + ' · 너무 작음' : GRADE_TEXT[g];
+  toast(`${delta > 0 ? '+' : ''}${delta} ${label}`, delta > 0 ? '#9ff08f' : '#ff8f7a', new THREE.Vector3(PLATE.x, 0.5, PLATE.z - 0.6));
+  blip(delta > 0 ? 'good' : 'bad');
+  // 접시에 놓기
+  p.state = 'plate';
+  const a = Math.random() * Math.PI * 2, r = Math.random() * (PLATE_R - 0.6);
+  p.mesh.position.set(PLATE.x + Math.cos(a) * r, 0.12 + CONFIG.meat.thickness / 2 + G.plate.length * 0.03, PLATE.z + Math.sin(a) * r * 0.7);
+  p.mesh.rotation.y = Math.random() * Math.PI;
+  G.plate.push(p); G.emptyT = 0;
+  advanceHint(3);
+  updateHud();
+}
+function discard(p) {
+  G.stats.trashed++;
+  if (grade(p) !== 'burnt') sayCd('trash', 6);
+  p.state = 'trash'; p.anim = { t: 0 };
+  toast('버림', '#fff', TRASH.clone().setY(0.6));
+}
+
+// ---------------------------------------------------------------------
+// 입력
+// ---------------------------------------------------------------------
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function rayFrom(e) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+}
+function planeAt(e, y) {
+  rayFrom(e);
+  const out = new THREE.Vector3();
+  return raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), out) ? out : null;
+}
+function pickPiece(e) {
+  rayFrom(e);
+  const list = pieces.filter(p => p.state === 'grill').map(p => p.mesh);
+  const hit = raycaster.intersectObjects(list, false)[0];
+  if (hit) return hit.object.userData.piece;
+  const pt = planeAt(e, MEAT_Y); if (!pt) return null;
+  let best = null, bd = 0.55;
+  for (const p of pieces) {
+    if (p.state !== 'grill') continue;
+    const dx = Math.max(0, Math.abs(pt.x - p.mesh.position.x) - p.len / 2), dz = Math.max(0, Math.abs(pt.z - p.mesh.position.z) - CONFIG.meat.width / 2);
+    const d = Math.hypot(dx, dz); if (d < bd) { bd = d; best = p; }
+  }
+  return best;
+}
+function hitTray(e) { rayFrom(e); return raycaster.intersectObject(trayGroup, true).length > 0; }
+
+let ptr = null;
+canvas.addEventListener('pointerdown', e => {
+  if (!G.running || ptr) return;
+  canvas.setPointerCapture(e.pointerId);
+  if (hitTray(e)) { addMeat(); return; }
+  if (G.mode === 'tongs') {
+    const p = pickPiece(e);
+    if (!p) return;
+    const pt = planeAt(e, MEAT_Y);
+    ptr = { id: e.pointerId, kind: 'tongs', piece: p, sx: e.clientX, sy: e.clientY, dragging: false, off: new THREE.Vector3(p.mesh.position.x - pt.x, 0, p.mesh.position.z - pt.z) };
+  } else {
+    ptr = { id: e.pointerId, kind: 'cut', pts: [[e.clientX, e.clientY]], world: [planeAt(e, MEAT_Y)] };
+    drawTrail();
+  }
+});
+canvas.addEventListener('pointermove', e => {
+  if (!ptr || e.pointerId !== ptr.id) return;
+  if (ptr.kind === 'tongs') {
+    const p = ptr.piece;
+    if (!ptr.dragging && Math.hypot(e.clientX - ptr.sx, e.clientY - ptr.sy) > 8 && p.state === 'grill') { ptr.dragging = true; p.state = 'drag'; }
+    if (ptr.dragging) {
+      const pt = planeAt(e, MEAT_Y + 0.7);
+      if (pt) { p.mesh.position.set(pt.x + ptr.off.x, MEAT_Y + 0.7, pt.z + ptr.off.z); }
+      const overPlate = Math.hypot(p.mesh.position.x - PLATE.x, p.mesh.position.z - PLATE.z) < PLATE_R + 0.4;
+      const overTrash = Math.hypot(p.mesh.position.x - TRASH.x, p.mesh.position.z - TRASH.z) < TRASH_R + 0.4;
+      plateMat.emissive.setHex(overPlate ? 0x553311 : 0); trashMat.emissive.setHex(overTrash ? 0x553311 : 0);
+    }
+  } else {
+    ptr.pts.push([e.clientX, e.clientY]); ptr.world.push(planeAt(e, MEAT_Y));
+    drawTrail();
+  }
+});
+function endPointer(e) {
+  if (!ptr || e.pointerId !== ptr.id) return;
+  const P = ptr; ptr = null;
+  if (P.kind === 'tongs') {
+    const p = P.piece;
+    plateMat.emissive.setHex(0); trashMat.emissive.setHex(0);
+    if (!P.dragging) { flip(p); return; }
+    const pos = p.mesh.position;
+    if (Math.hypot(pos.x - PLATE.x, pos.z - PLATE.z) < PLATE_R + 0.4) return serve(p);
+    if (Math.hypot(pos.x - TRASH.x, pos.z - TRASH.z) < TRASH_R + 0.4) return discard(p);
+    const inside = Math.hypot(pos.x, pos.z) < R - 0.4;
+    if (inside && isFree(pos.x, pos.z, p.len, p)) p.home.set(pos.x, MEAT_Y, pos.z);
+    p.state = 'return'; p.anim = { t: 0, from: pos.clone() };
+  } else {
+    doCut(P.world.filter(Boolean));
+    fadeTrail();
+  }
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+
+function doCut(world) {
+  const done = new Set(); let cuts = 0;
+  for (let i = 0; i < world.length - 1; i++) {
+    const a = world[i], b = world[i + 1];
+    for (const p of [...pieces]) {
+      if (p.state !== 'grill' || done.has(p.id)) continue;
+      const pz = p.mesh.position.z, px = p.mesh.position.x;
+      if ((a.z - pz) * (b.z - pz) > 0 || a.z === b.z) continue;
+      const t = (pz - a.z) / (b.z - a.z), xc = a.x + (b.x - a.x) * t;
+      if (xc < px - p.len / 2 + 0.05 || xc > px + p.len / 2 - 0.05) continue;
+      done.add(p.id);
+      if (cutPiece(p, xc)) cuts++;
+    }
+  }
+  if (cuts) { blip('snip'); advanceHint(2); }
+}
+const trailLine = $('trailLine');
+function drawTrail() { trailLine.style.transition = 'none'; trailLine.style.opacity = 0.9; trailLine.setAttribute('points', ptr.pts.map(p => p.join(',')).join(' ')); }
+function fadeTrail() { trailLine.style.transition = 'opacity .35s'; trailLine.style.opacity = 0; }
+
+function setMode(m) {
+  G.mode = m;
+  $('modeTongs').classList.toggle('on', m === 'tongs');
+  $('modeScissors').classList.toggle('on', m === 'scissors');
+}
+$('modeTongs').onclick = () => setMode('tongs');
+$('modeScissors').onclick = () => setMode('scissors');
+$('addMeat').onclick = addMeat;
+addEventListener('keydown', e => {
+  if (e.key === 'q' || e.key === '1') setMode('tongs');
+  if (e.key === 'w' || e.key === '2') setMode('scissors');
+  if (e.key === 'e' || e.key === ' ') addMeat();
+});
+$('mute').onclick = () => { audio.muted = !audio.muted; $('mute').textContent = audio.muted ? '🔇' : '🔊'; };
+$('startBtn').onclick = () => { initAudio(); audio.ctx?.resume?.(); $('startScreen').classList.add('hidden'); resetGame(); };
+$('againBtn').onclick = () => { $('resultScreen').classList.add('hidden'); resetGame(); };
+$('copyBtn').onclick = async () => {
+  const r = G.result;
+  const text = `[막내의 회식] 나의 등급: ${r.title}\n부장님 기분 ${r.mood} · 대접한 조각 ${G.stats.served} · 완벽 ${G.stats.perfect} · 태운 고기 ${G.stats.burnt}\n부장님: "${r.line}"`;
+  try { await navigator.clipboard.writeText(text); $('copied').textContent = '복사됐어요. 친구에게 붙여넣어 보세요!'; }
+  catch (e) { $('copied').textContent = '복사가 막혀 있어요.'; }
+};
+
+function endGame() {
+  G.running = false;
+  const mood = Math.round(G.mood);
+  const r = RANKS.find(k => mood >= k.min);
+  G.result = { title: r.title, line: r.line, mood };
+  $('rRank').textContent = r.title; $('rQuote').textContent = `"${r.line}"`;
+  $('rMood').textContent = mood; $('rServed').textContent = G.stats.served;
+  $('rPerfect').textContent = G.stats.perfect; $('rBurnt').textContent = G.stats.burnt;
+  $('copied').textContent = '';
+  setHint(99);
+  setTimeout(() => $('resultScreen').classList.remove('hidden'), 400);
+}
+
+// ---------------------------------------------------------------------
+// 카메라 맞추기
+// ---------------------------------------------------------------------
+const TARGET = new THREE.Vector3(), DIR = new THREE.Vector3(0, 1.15, 1).normalize();
+function fit() {
+  const w = innerWidth, h = innerHeight, portrait = w / h < 0.9;
+  // 세로 화면이면 잔반 그릇과 생고기 쟁반을 불판 아래로 옮긴다
+  if (portrait) { TRASH.set(-3.0, 0, 6.6); TRAY.set(3.0, 0, 6.6); trayGroup.rotation.y = Math.PI / 2; }
+  else { TRASH.set(-6.2, 0, 3.4); TRAY.set(6.2, 0, 3.4); trayGroup.rotation.y = 0; }
+  trashGroup.position.copy(TRASH); trayGroup.position.copy(TRAY);
+  const xr = portrait ? 5.0 : 7.4, zf = -7.6, zn = portrait ? 8.6 : 5.6;
+  TARGET.set(0, 0, (zf + zn) / 2 + 0.6);
+  const FIT = [];
+  for (const x of [-xr, xr]) for (const z of [zf, zn]) for (const y of [0, 1.2]) FIT.push(new THREE.Vector3(x, y, z));
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  const topM = 1 - 2 * (78 / h), botM = -1 + 2 * (80 / h);
+  for (let d = 8; d < 90; d += 0.25) {
+    camera.position.copy(TARGET).addScaledVector(DIR, d); camera.lookAt(TARGET);
+    camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+    if (FIT.every(p => { const v = p.clone().project(camera); return v.x > -0.97 && v.x < 0.97 && v.y < topM && v.y > botM; })) break;
+  }
+}
+addEventListener('resize', fit); fit();
+
+// ---------------------------------------------------------------------
+// 메인 루프
+// ---------------------------------------------------------------------
+let last = performance.now(), clock = 0;
+function tick(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; clock += dt;
+  coalMat.emissiveIntensity = 0.55 + Math.sin(clock * 3) * 0.08 + Math.sin(clock * 7.3) * 0.05;
+  glow.intensity = 5.5 + Math.sin(clock * 5) * 0.6;
+
+  const C = CONFIG;
+  let grillCount = 0, smoking = false;
+  for (const p of [...pieces]) {
+    const pos = p.mesh.position;
+    if (p.state === 'drop') {
+      p.anim.t += dt / 0.25; pos.y = 2.5 + (MEAT_Y - 2.5) * Math.min(1, p.anim.t ** 2);
+      if (p.anim.t >= 1) { pos.y = MEAT_Y; p.state = 'grill'; }
+    } else if (p.state === 'flip') {
+      p.anim.t += dt / C.flipTime;
+      const t = Math.min(1, p.anim.t);
+      p.mesh.rotation.x = Math.PI * t; pos.y = MEAT_Y + Math.sin(Math.PI * t) * 0.7;
+      if (t >= 1) { p.mesh.rotation.x = 0; pos.y = MEAT_Y; [p.cookTop, p.cookBottom] = [p.cookBottom, p.cookTop]; paintPiece(p); p.state = 'grill'; }
+    } else if (p.state === 'return') {
+      p.anim.t += dt / 0.18; const t = Math.min(1, p.anim.t);
+      pos.lerpVectors(p.anim.from, p.home, t);
+      if (t >= 1) p.state = 'grill';
+    } else if (p.state === 'trash') {
+      p.anim.t += dt / 0.3; const t = Math.min(1, p.anim.t);
+      pos.lerp(TRASH.clone().setY(0.3), 0.25); p.mesh.scale.setScalar(1 - t * 0.6);
+      if (t >= 1) removePiece(p);
+    } else if (p.state === 'eaten') {
+      p.anim.t += dt / 0.35; p.mesh.scale.setScalar(Math.max(0.01, 1 - p.anim.t)); pos.y += dt * 1.5;
+      if (p.anim.t >= 1) removePiece(p);
+    }
+    if ((p.state === 'grill' || p.state === 'flip') && G.running) {
+      grillCount++;
+      const heat = heatAt(pos.x, pos.z);
+      if (p.state === 'grill') { p.cookBottom += heat * C.cook.rate * dt; p.cookTop += heat * C.cook.rate * C.cook.topRate * dt; paintPiece(p); }
+      p.smokeT -= dt;
+      const hi = Math.max(p.cookTop, p.cookBottom);
+      if (hi > C.doneness.burnt) { smoking = true; if (p.smokeT <= 0) { puff(pos.x, pos.z, true); p.smokeT = 0.12; } }
+      else if (heat > 0 && p.smokeT <= 0) { puff(pos.x, pos.z, false); p.smokeT = 1.2 + Math.random(); }
+    }
+  }
+  for (let i = smokes.length - 1; i >= 0; i--) {
+    const s = smokes[i], u = s.userData; u.life += dt;
+    s.position.y += dt * 1.1; s.position.x += u.vx * dt;
+    s.scale.setScalar(0.7 + u.life * 1.6);
+    s.material.opacity = Math.max(0, (1 - u.life / u.max)) * (s.material.color.r < 0.5 ? 0.85 : 0.3);
+    if (u.life > u.max) { scene.remove(s); s.material.dispose(); smokes.splice(i, 1); }
+  }
+  if (audio.sizzle) audio.sizzle.gain.setTargetAtTime(audio.muted || !G.running ? 0 : Math.min(0.14, grillCount * 0.022), audio.ctx.currentTime, 0.1);
+
+  if (G.running) {
+    G.time -= dt;
+    // 부장님 먹기
+    const plateNow = G.plate.filter(p => p.state === 'plate');
+    G.plate = plateNow;
+    if (plateNow.length) {
+      G.emptyT = 0; G.eatT += dt;
+      if (G.eatT >= C.boss.eatInterval) { G.eatT = 0; const p = plateNow.shift(); p.state = 'eaten'; p.anim = { t: 0 }; G.plate = plateNow; }
+    } else {
+      G.eatT = C.boss.eatInterval * 0.6;
+      G.emptyT += dt;
+      if (G.emptyT > C.boss.patience) {
+        const grilling = grillCount > 0;
+        G.mood -= C.boss.emptyDrain * (grilling ? C.boss.grillingMercy : 1) * dt;
+        sayCd(grilling ? 'waiting' : 'empty', 7);
+      }
+    }
+    if (smoking) { G.mood -= C.boss.smokeDrain * dt; sayCd('smoke', 8); }
+    G.mood = Math.max(0, Math.min(100, G.mood));
+    updateHud();
+    if (G.time <= 0) endGame();
+  }
+  placeLabels();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+// 테스트용 접근점
+window.__game = { G, pieces, CONFIG };
+window.__screenOf = () => pieces.filter(p => p.state === 'grill').map(p => {
+  const c = toScreen(p.mesh.position), l = toScreen(p.mesh.position.clone().setX(p.mesh.position.x - p.len / 2)), r = toScreen(p.mesh.position.clone().setX(p.mesh.position.x + p.len / 2));
+  return { x: c.x, y: c.y, w: r.x - l.x, len: p.len };
+});
+window.__plateScreen = () => toScreen(PLATE.clone().setY(0.2));
+</script>
+</body>
+</html>
